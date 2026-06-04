@@ -1,6 +1,31 @@
 import { NextResponse } from "next/server";
+import type { ScoringResult } from "@/lib/scoring";
 
-export async function GET() {
-  const webhookConfigured = !!process.env.DISCORD_WEBHOOK_URL;
-  return NextResponse.json({ webhookConfigured });
+type RequestBody = {
+  symbol: string;
+  score: ScoringResult;
+  candles?: unknown[];
+};
+
+export async function POST(req: Request) {
+  try {
+    const body: RequestBody = await req.json();
+
+    // Simple debug log (safe for now)
+    console.log("ALERT TRIGGERED:", {
+      symbol: body.symbol,
+      score: body.score.overallScore,
+      state: body.score.breakoutState,
+    });
+
+    return NextResponse.json({
+      ok: true,
+      message: "Alert received",
+    });
+  } catch (err) {
+    return NextResponse.json(
+      { ok: false, error: "Invalid request body" },
+      { status: 400 }
+    );
+  }
 }
