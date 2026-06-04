@@ -2,21 +2,28 @@ import { NextResponse } from "next/server";
 import type { ScoringResult } from "@/lib/scoring";
 
 type RequestBody = {
+  symbol: string;
   score: ScoringResult;
-  symbol?: string;
+  candles?: unknown[];
 };
 
 export async function POST(req: Request) {
   try {
     const body: RequestBody = await req.json();
 
-    // TEMP: just log for now (no explainScore needed)
-    console.log("Alert received:", body.symbol, body.score);
+    console.log("ALERT TRIGGERED:", {
+      symbol: body.symbol,
+      score: body.score.overallScore,
+      state: body.score.breakoutState,
+    });
 
-    return NextResponse.json({ ok: true });
-  } catch (err) {
+    return NextResponse.json({
+      ok: true,
+      message: "Alert received",
+    });
+  } catch {
     return NextResponse.json(
-      { error: "Invalid request" },
+      { ok: false, error: "Invalid request" },
       { status: 400 }
     );
   }

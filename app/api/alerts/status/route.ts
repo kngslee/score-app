@@ -1,31 +1,15 @@
 import { NextResponse } from "next/server";
-import type { ScoringResult } from "@/lib/scoring";
 
-type RequestBody = {
-  symbol: string;
-  score: ScoringResult;
-  candles?: unknown[];
-};
+export async function GET() {
+  // For now: simple static status (no external dependencies)
+  // You can upgrade this later to real webhook validation
 
-export async function POST(req: Request) {
-  try {
-    const body: RequestBody = await req.json();
+  const webhookConfigured = Boolean(process.env.DISCORD_WEBHOOK_URL);
 
-    // Simple debug log (safe for now)
-    console.log("ALERT TRIGGERED:", {
-      symbol: body.symbol,
-      score: body.score.overallScore,
-      state: body.score.breakoutState,
-    });
-
-    return NextResponse.json({
-      ok: true,
-      message: "Alert received",
-    });
-  } catch (err) {
-    return NextResponse.json(
-      { ok: false, error: "Invalid request body" },
-      { status: 400 }
-    );
-  }
+  return NextResponse.json({
+    webhookConfigured,
+    status: webhookConfigured
+      ? "connected"
+      : "missing",
+  });
 }
