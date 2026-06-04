@@ -44,7 +44,6 @@ export function scoreCandles({
   candles,
 }: {
   candles: Candle[];
-  symbol: string;
 }): ScoringResult {
   const closes = candles.map(c => c.close);
 

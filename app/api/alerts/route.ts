@@ -1,32 +1,22 @@
 import { NextResponse } from "next/server";
+import { fetchMarketCandles } from "@/lib/market";
 import { scoreCandles, type ScoringResult } from "@/lib/scoring";
 import { evaluateAndCreateAlert, sendDiscordAlert } from "@/lib/alerts";
-
-type CandleInput = {
-  time: number | string;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-};
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { symbol, candles } = body;
+    const symbol = body?.symbol;
 
-    if (!symbol || !Array.isArray(candles) || candles.length < 5) {
+    if (!symbol || typeof symbol !== "string") {
       return NextResponse.json(
-        { error: "Missing symbol or insufficient candles" },
+        { error: "Missing symbol" },
         { status: 400 }
       );
     }
 
-    const score: ScoringResult = scoreCandles({
-      candles: candles as CandleInput[],
-      symbol,
-    });
-
+    const candles = await fetchMarketCandles(symbol);
+    const score: ScoringResult = scoreCandles({ candles });
     const alert = evaluateAndCreateAlert(symbol, score);
 
     if (!alert) {
@@ -44,7 +34,7 @@ export async function POST(req: Request) {
       alert,
       sent,
     });
-  } catch (err) {
+  } catch (err: unknown) {
     return NextResponse.json(
       {
         error: "Failed to process alert",
