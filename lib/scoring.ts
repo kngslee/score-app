@@ -1,10 +1,14 @@
 export type ScoringResult = {
   overallScore: number;
   lastPrice: number;
+
   breakoutState: "ROCKET" | "STRONG" | "WEAK" | "NEUTRAL";
   breakoutProbability: number;
+
   probabilityTier: "LOW" | "MID" | "HIGH";
   institutionalClass: "A" | "B" | "C" | "D";
+
+  marketRegime: "BULL" | "BEAR" | "SIDEWAYS";
 };
 
 type Candle = {
@@ -51,12 +55,23 @@ export function scoreCandles({
       ? "C"
       : "D";
 
+  const marketRegime: ScoringResult["marketRegime"] =
+    momentum > 3
+      ? "BULL"
+      : momentum < -3
+      ? "BEAR"
+      : "SIDEWAYS";
+
   return {
     overallScore: Math.min(100, Math.abs(momentum) * 10),
     lastPrice,
+
     breakoutState,
     breakoutProbability,
+
     probabilityTier,
     institutionalClass,
+
+    marketRegime,
   };
 }
