@@ -11,6 +11,8 @@ export type ScoringResult = {
   marketRegime: "BULL" | "BEAR" | "SIDEWAYS";
 
   rsi: number;
+
+  momentum: number;
 };
 
 type Candle = {
@@ -96,5 +98,7 @@ export function scoreCandles({
     marketRegime,
 
     rsi,
+
+    momentum, // ✅ THIS FIXES YOUR ERROR
   };
 }
