@@ -19,7 +19,23 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Configuration
 
+Create a `.env.local` file in the project root and set the following values:
+
+```env
+FINNHUB_API_KEY=your_finnhub_api_key
+GROK_API_KEY=your_grok_api_key
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/your_webhook_id/your_webhook_token
+```
+
+If `FINNHUB_API_KEY` is not available, the app can fall back to `ALPHAVANTAGE_API_KEY` or `NEXT_PUBLIC_ALPHAVANTAGE_API_KEY` for quote and candle data.
+
+The `GROK_API_KEY` is used to generate an explanation of why the selected stock received its score.
+
+## Alerts
+
+The dashboard includes a "Trigger alert" button on the selected symbol panel. When configured, the app evaluates the breakout score for the symbol and posts a Discord webhook alert if a high-probability signal is detected.
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

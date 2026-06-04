@@ -1,23 +1,22 @@
 import { NextResponse } from "next/server";
-import { fetchCandles } from "@/lib/data/market";
+import { fetchQuote } from "@/lib/data/market";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const symbol = searchParams.get("symbol")?.trim();
-  const timeframe = searchParams.get("timeframe") || "1d";
 
   if (!symbol) {
     return NextResponse.json({ error: "Missing symbol parameter" }, { status: 400 });
   }
 
   try {
-    const candles = await fetchCandles(symbol, timeframe);
-    return NextResponse.json({ symbol, timeframe, candles });
-  } catch (err: unknown) {
+    const quote = await fetchQuote(symbol);
+    return NextResponse.json({ quote });
+  } catch (error: unknown) {
     return NextResponse.json(
       {
-        error: "Failed to load candles",
-        message: err instanceof Error ? err.message : "Unknown error",
+        error: "Failed to load quote",
+        message: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
     );
