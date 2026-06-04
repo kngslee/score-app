@@ -10,38 +10,37 @@ type Candle = {
   close: number;
 };
 
-type ScoreInput = {
+export function scoreCandles({
+  candles,
+}: {
   candles: Candle[];
   symbol: string;
-};
-
-export function scoreCandles({ candles }: ScoreInput): ScoringResult {
+}): ScoringResult {
   const lastPrice = candles[candles.length - 1]?.close ?? 0;
 
   const avg =
-    candles.reduce((sum, c) => sum + c.close, 0) / candles.length || 0;
+    candles.reduce((a, b) => a + b.close, 0) / candles.length || 0;
 
-  const momentum = ((lastPrice - avg) / avg) * 100;
+  const momentum = avg ? ((lastPrice - avg) / avg) * 100 : 0;
 
   let breakoutState: ScoringResult["breakoutState"] = "NEUTRAL";
-  let breakoutProbability = Math.min(100, Math.abs(momentum) * 5);
 
   if (momentum > 5) breakoutState = "ROCKET";
   else if (momentum > 2) breakoutState = "STRONG";
   else if (momentum < -5) breakoutState = "WEAK";
 
-  const probabilityTier =
-    breakoutProbability > 70
-      ? "HIGH"
-      : breakoutProbability > 40
-      ? "MID"
-      : "LOW";
+  const breakoutProbability = Math.min(100, Math.abs(momentum) * 5);
 
   return {
     overallScore: Math.min(100, Math.abs(momentum) * 10),
     lastPrice,
     breakoutState,
     breakoutProbability,
-    probabilityTier,
+    probabilityTier:
+      breakoutProbability > 70
+        ? "HIGH"
+        : breakoutProbability > 40
+        ? "MID"
+        : "LOW",
   };
 }
