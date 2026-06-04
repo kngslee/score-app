@@ -9,11 +9,34 @@ export type ScoringResult = {
   institutionalClass: "A" | "B" | "C" | "D";
 
   marketRegime: "BULL" | "BEAR" | "SIDEWAYS";
+
+  rsi: number;
 };
 
 type Candle = {
   close: number;
 };
+
+function calculateRSI(closes: number[]): number {
+  if (closes.length < 2) return 50;
+
+  let gains = 0;
+  let losses = 0;
+
+  for (let i = 1; i < closes.length; i++) {
+    const diff = closes[i] - closes[i - 1];
+    if (diff >= 0) gains += diff;
+    else losses -= diff;
+  }
+
+  const avgGain = gains / closes.length;
+  const avgLoss = losses / closes.length;
+
+  if (avgLoss === 0) return 100;
+
+  const rs = avgGain / avgLoss;
+  return 100 - 100 / (1 + rs);
+}
 
 export function scoreCandles({
   candles,
@@ -21,10 +44,11 @@ export function scoreCandles({
   candles: Candle[];
   symbol: string;
 }): ScoringResult {
-  const lastPrice = candles[candles.length - 1]?.close ?? 0;
+  const closes = candles.map(c => c.close);
 
-  const avg =
-    candles.reduce((a, b) => a + b.close, 0) / candles.length || 0;
+  const lastPrice = closes[closes.length - 1] ?? 0;
+
+  const avg = closes.reduce((a, b) => a + b, 0) / closes.length || 0;
 
   const momentum = avg ? ((lastPrice - avg) / avg) * 100 : 0;
 
@@ -56,11 +80,9 @@ export function scoreCandles({
       : "D";
 
   const marketRegime: ScoringResult["marketRegime"] =
-    momentum > 3
-      ? "BULL"
-      : momentum < -3
-      ? "BEAR"
-      : "SIDEWAYS";
+    momentum > 3 ? "BULL" : momentum < -3 ? "BEAR" : "SIDEWAYS";
+
+  const rsi = calculateRSI(closes);
 
   return {
     overallScore: Math.min(100, Math.abs(momentum) * 10),
@@ -71,7 +93,8 @@ export function scoreCandles({
 
     probabilityTier,
     institutionalClass,
-
     marketRegime,
+
+    rsi,
   };
 }
