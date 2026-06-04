@@ -4,6 +4,7 @@ export type ScoringResult = {
   breakoutState: "ROCKET" | "STRONG" | "WEAK" | "NEUTRAL";
   breakoutProbability: number;
   probabilityTier: "LOW" | "MID" | "HIGH";
+  institutionalClass: "A" | "B" | "C" | "D";
 };
 
 type Candle = {
@@ -23,6 +24,8 @@ export function scoreCandles({
 
   const momentum = avg ? ((lastPrice - avg) / avg) * 100 : 0;
 
+  const breakoutProbability = Math.min(100, Math.abs(momentum) * 5);
+
   const breakoutState: ScoringResult["breakoutState"] =
     momentum > 5
       ? "ROCKET"
@@ -32,18 +35,28 @@ export function scoreCandles({
       ? "WEAK"
       : "NEUTRAL";
 
-  const breakoutProbability = Math.min(100, Math.abs(momentum) * 5);
+  const probabilityTier: ScoringResult["probabilityTier"] =
+    breakoutProbability > 70
+      ? "HIGH"
+      : breakoutProbability > 40
+      ? "MID"
+      : "LOW";
+
+  const institutionalClass: ScoringResult["institutionalClass"] =
+    breakoutProbability > 80
+      ? "A"
+      : breakoutProbability > 60
+      ? "B"
+      : breakoutProbability > 40
+      ? "C"
+      : "D";
 
   return {
     overallScore: Math.min(100, Math.abs(momentum) * 10),
     lastPrice,
     breakoutState,
     breakoutProbability,
-    probabilityTier:
-      breakoutProbability > 70
-        ? "HIGH"
-        : breakoutProbability > 40
-        ? "MID"
-        : "LOW",
+    probabilityTier,
+    institutionalClass,
   };
 }
