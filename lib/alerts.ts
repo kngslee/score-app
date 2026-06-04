@@ -103,26 +103,6 @@ function formatDiscordMessage(alert: Alert): {
             value: `${score.momentum > 0 ? "+" : ""}${score.momentum.toFixed(1)}%`,
             inline: true,
           },
-          {
-            name: "Volume Ratio",
-            value: `${score.volumeRatio.toFixed(2)}x`,
-            inline: true,
-          },
-          {
-            name: "ATR %",
-            value: `${score.atrPercent.toFixed(1)}%`,
-            inline: true,
-          },
-          {
-            name: "EMA Stack",
-            value: `${score.ema20.toFixed(2)} > ${score.ema50.toFixed(2)} > ${score.ema200.toFixed(2)}`,
-            inline: false,
-          },
-          {
-            name: "Setup Notes",
-            value: score.notes.length > 0 ? score.notes.join(" • ") : "No additional notes",
-            inline: false,
-          },
         ],
         timestamp: new Date(alert.timestamp).toISOString(),
       },
@@ -161,6 +141,7 @@ export async function sendDiscordAlert(alert: Alert): Promise<boolean> {
 }
 
 export function evaluateAndCreateAlert(
+  symbol: string,
   score: ScoringResult
 ): Alert | null {
   const alertLevel = shouldTriggerAlert(score);
@@ -173,15 +154,15 @@ export function evaluateAndCreateAlert(
   let message = "";
 
   if (alertLevel === "CRITICAL") {
-    title = `🚀 ROCKET BREAKOUT: ${score.symbol}`;
+    title = `🚀 ROCKET BREAKOUT: ${symbol}`;
     message = `Institutional-grade breakout detected. Class ${score.institutionalClass}, ${score.breakoutProbability.toFixed(0)}% probability.`;
   } else if (alertLevel === "WARN") {
-    title = `💪 STRONG SETUP: ${score.symbol}`;
+    title = `💪 STRONG SETUP: ${symbol}`;
     message = `Strong breakout conditions forming. Class ${score.institutionalClass}, ${score.breakoutProbability.toFixed(0)}% probability.`;
   }
 
   return {
-    symbol: score.symbol || "UNKNOWN",
+    symbol,
     level: alertLevel,
     title,
     message,
