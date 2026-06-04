@@ -23,11 +23,14 @@ export function scoreCandles({
 
   const momentum = avg ? ((lastPrice - avg) / avg) * 100 : 0;
 
-  let breakoutState: ScoringResult["breakoutState"] = "NEUTRAL";
-
-  if (momentum > 5) breakoutState = "ROCKET";
-  else if (momentum > 2) breakoutState = "STRONG";
-  else if (momentum < -5) breakoutState = "WEAK";
+  const breakoutState: ScoringResult["breakoutState"] =
+    momentum > 5
+      ? "ROCKET"
+      : momentum > 2
+      ? "STRONG"
+      : momentum < -5
+      ? "WEAK"
+      : "NEUTRAL";
 
   const breakoutProbability = Math.min(100, Math.abs(momentum) * 5);
 

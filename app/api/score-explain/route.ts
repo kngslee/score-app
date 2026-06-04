@@ -1,36 +1,17 @@
 import { NextResponse } from "next/server";
-import type { ScoringResult } from "@/lib/scoring";
 import { scoreCandles } from "@/lib/scoring";
-
-type RequestBody = {
-  symbol: string;
-  candles: { close: number }[];
-};
 
 export async function POST(req: Request) {
   try {
-    const body: RequestBody = await req.json();
+    const { symbol, candles } = await req.json();
 
-    if (!body.candles || body.candles.length === 0) {
-      return NextResponse.json(
-        { error: "No candles provided" },
-        { status: 400 }
-      );
-    }
-
-    const result: ScoringResult = scoreCandles({
-      candles: body.candles,
-      symbol: body.symbol,
+    const result = scoreCandles({
+      symbol,
+      candles,
     });
 
-    return NextResponse.json({
-      symbol: body.symbol,
-      result,
-    });
+    return NextResponse.json({ symbol, result });
   } catch {
-    return NextResponse.json(
-      { error: "Invalid request" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "bad request" }, { status: 400 });
   }
 }
