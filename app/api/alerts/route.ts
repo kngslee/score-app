@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { fetchMarketCandles } from "@/lib/market";
+import { fetchCandles } from "@/lib/data/market";
 import { scoreCandles, type ScoringResult } from "@/lib/scoring";
 import { evaluateAndCreateAlert, sendDiscordAlert } from "@/lib/alerts";
 
@@ -15,7 +15,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const candles = await fetchMarketCandles(symbol);
+    const candles = await fetchCandles(symbol);
     const score: ScoringResult = scoreCandles({ candles });
     const alert = evaluateAndCreateAlert(symbol, score);
 

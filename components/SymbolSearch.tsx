@@ -29,11 +29,12 @@ export default function SymbolSearch({ onSelect }: Props) {
         const res = await fetch(`/api/search?q=${encodeURIComponent(query.trim())}`, {
           signal: controller.signal,
         });
+        const json = await res.json();
+
         if (!res.ok) {
-          throw new Error("Unable to search symbols");
+          throw new Error(json?.message || "Unable to search symbols");
         }
 
-        const json = await res.json();
         setResults(Array.isArray(json.results) ? json.results : []);
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return;

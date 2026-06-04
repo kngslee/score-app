@@ -290,15 +290,25 @@ export async function fetchCandles(symbol: string, timeframe?: string): Promise<
 
   const provider = FINNHUB_API_KEY ? "finnhub" : ALPHAVANTAGE_API_KEY ? "alphavantage" : "mock";
   let candles: MarketCandle[];
+  let shouldCache = provider === "mock";
 
   try {
-    candles = provider === "finnhub" ? await fetchFinnhubCandles(normalizedSymbol, normalizedTimeframe) : await fetchAlphaVantageCandles(normalizedSymbol, normalizedTimeframe);
+    if (provider === "finnhub") {
+      candles = await fetchFinnhubCandles(normalizedSymbol, normalizedTimeframe);
+    } else if (provider === "alphavantage") {
+      candles = await fetchAlphaVantageCandles(normalizedSymbol, normalizedTimeframe);
+    } else {
+      candles = buildMockCandles(normalizedSymbol, normalizedTimeframe);
+    }
+    shouldCache = true;
   } catch (error) {
     console.warn(`Market candle fetch failed for ${normalizedSymbol}:`, error);
     candles = buildMockCandles(normalizedSymbol, normalizedTimeframe);
   }
 
-  candleCache.set(cacheKey, { expires: Date.now() + DEFAULT_CANDLE_TTL, candles });
+  if (shouldCache) {
+    candleCache.set(cacheKey, { expires: Date.now() + DEFAULT_CANDLE_TTL, candles });
+  }
   return candles;
 }
 
@@ -312,15 +322,25 @@ export async function fetchQuote(symbol: string): Promise<Quote> {
 
   const provider = FINNHUB_API_KEY ? "finnhub" : ALPHAVANTAGE_API_KEY ? "alphavantage" : "mock";
   let quote: Quote;
+  let shouldCache = provider === "mock";
 
   try {
-    quote = provider === "finnhub" ? await fetchFinnhubQuote(normalizedSymbol) : await fetchAlphaVantageQuote(normalizedSymbol);
+    if (provider === "finnhub") {
+      quote = await fetchFinnhubQuote(normalizedSymbol);
+    } else if (provider === "alphavantage") {
+      quote = await fetchAlphaVantageQuote(normalizedSymbol);
+    } else {
+      quote = buildMockQuote(normalizedSymbol);
+    }
+    shouldCache = true;
   } catch (error) {
     console.warn(`Market quote fetch failed for ${normalizedSymbol}:`, error);
     quote = buildMockQuote(normalizedSymbol);
   }
 
-  quoteCache.set(cacheKey, { expires: Date.now() + DEFAULT_QUOTE_TTL, quote });
+  if (shouldCache) {
+    quoteCache.set(cacheKey, { expires: Date.now() + DEFAULT_QUOTE_TTL, quote });
+  }
   return quote;
 }
 
@@ -358,12 +378,20 @@ export async function searchSymbols(query: string): Promise<SearchResult[]> {
   let results: SearchResult[] = [];
 
   try {
-    results = provider === "finnhub" ? await fetchFinnhubSearch(searchTerm) : await fetchAlphaVantageSearch(searchTerm);
+    if (provider === "finnhub") {
+      results = await fetchFinnhubSearch(searchTerm);
+    } else if (provider === "alphavantage") {
+      results = await fetchAlphaVantageSearch(searchTerm);
+    } else {
+      results = [{ symbol: searchTerm.toUpperCase(), description: "Mock search result" }];
+    }
+
+    if (results.length > 0) {
+      searchCache.set(cacheKey, { expires: Date.now() + DEFAULT_SEARCH_TTL, results });
+    }
   } catch (error) {
     console.warn(`Search fetch failed for ${searchTerm}:`, error);
-    results = [{ symbol: query.toUpperCase(), description: "Symbol lookup failed, try again." }];
   }
 
-  searchCache.set(cacheKey, { expires: Date.now() + DEFAULT_SEARCH_TTL, results });
   return results;
 }

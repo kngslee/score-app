@@ -17,7 +17,10 @@ export default function ThemeToggle() {
 
   const activeTheme = useMemo(() => {
     if (!mounted) return "system";
-    return theme === "system" ? systemTheme || "dark" : theme;
+    if (theme === "system") {
+      return systemTheme || "dark";
+    }
+    return theme ?? "dark";
   }, [mounted, theme, systemTheme]);
 
   if (!mounted) {
