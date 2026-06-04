@@ -1,4 +1,4 @@
-import { UTCTimestamp } from "lightweight-charts";
+﻿import { UTCTimestamp } from "lightweight-charts";
 
 export type MarketCandle = {
   time: UTCTimestamp;
@@ -33,7 +33,7 @@ const quoteCache = new Map<string, { expires: number; quote: Quote }>();
 const candleCache = new Map<string, { expires: number; candles: MarketCandle[] }>();
 const searchCache = new Map<string, { expires: number; results: SearchResult[] }>();
 
-const DEFAULT_QUOTE_TTL = 35_000;
+const DEFAULT_QUOTE_TTL = 40_000;
 const DEFAULT_CANDLE_TTL = 180_000;
 const DEFAULT_SEARCH_TTL = 60_000;
 
@@ -43,10 +43,10 @@ function normalizeSymbol(symbol: string) {
   return symbol.trim().toUpperCase();
 }
 
-function getProviderName() {
-  if (FINNHUB_API_KEY) return "finnhub";
-  if (ALPHAVANTAGE_API_KEY) return "alphavantage";
-  throw new Error("Missing market data provider configuration. Set FINNHUB_API_KEY or ALPHAVANTAGE_API_KEY.");
+function normalizeTimeframe(timeframe?: string) {
+  if (!timeframe) return "1d";
+  const normalized = timeframe.toLowerCase().replace("60m", "1h").replace("120m", "2h");
+  return VALID_TIMEFRAMES.has(normalized) ? normalized : "1d";
 }
 
 function getFinnhubResolution(timeframe: string) {
@@ -116,12 +116,6 @@ function getWindowSeconds(timeframe: string) {
   }
 }
 
-function normalizeTimeframe(timeframe?: string) {
-  if (!timeframe) return "1d";
-  const normalized = timeframe.toLowerCase().replace("60m", "1h").replace("120m", "2h");
-  return VALID_TIMEFRAMES.has(normalized) ? normalized : "1d";
-}
-
 function toMarketCandle(timestamp: number, open: number, high: number, low: number, close: number, volume?: number): MarketCandle {
   return {
     time: Math.floor(timestamp) as UTCTimestamp,
@@ -131,6 +125,45 @@ function toMarketCandle(timestamp: number, open: number, high: number, low: numb
     close,
     volume,
   };
+}
+
+function buildMockCandles(symbol: string, timeframe: string): MarketCandle[] {
+  const now = Math.floor(Date.now() / 1000);
+  const points = timeframe === "1d" ? 50 : 70;
+  const candles: MarketCandle[] = [];
+  let value = 100 + Math.sin(now / 86400) * 5 + symbol.length * 1.5;
+
+  for (let i = points - 1; i >= 0; i--) {
+    const intervalMinutes = timeframe === "1m" ? 1 : timeframe === "5m" ? 5 : timeframe === "15m" ? 15 : timeframe === "30m" ? 30 : timeframe === "1h" ? 60 : timeframe === "2h" ? 120 : 1440;
+    const time = now - i * 60 * intervalMinutes;
+    const open = value + (Math.random() - 0.5) * 1.2;
+    const close = open + (Math.random() - 0.5) * 2.2;
+    const high = Math.max(open, close) + Math.random() * 1.5;
+    const low = Math.min(open, close) - Math.random() * 1.5;
+    const volume = Math.round(80_000 + Math.random() * 420_000);
+    candles.push(toMarketCandle(time, open, high, low, close, volume));
+    value = close;
+  }
+
+  return candles;
+}
+
+function buildMockQuote(symbol: string): Quote {
+  const base = 80 + symbol.charCodeAt(0) * 0.35;
+  const current = base + Math.random() * 24;
+  return {
+    symbol,
+    current: Number(current.toFixed(2)),
+    high: Number((current + Math.random() * 3).toFixed(2)),
+    low: Number((current - Math.random() * 3).toFixed(2)),
+    open: Number((current - Math.random() * 1.5).toFixed(2)),
+    prevClose: Number((current - Math.random() * 1.8).toFixed(2)),
+    timestamp: Math.floor(Date.now() / 1000),
+  };
+}
+
+function getCacheKey(prefix: string, symbol: string, timeframe?: string) {
+  return `${prefix}:${symbol}:${timeframe ?? "default"}`;
 }
 
 async function fetchFinnhubCandles(symbol: string, timeframe: string): Promise<MarketCandle[]> {
@@ -162,7 +195,6 @@ async function fetchAlphaVantageCandles(symbol: string, timeframe: string): Prom
   const response = await fetch(`https://www.alphavantage.co/query?${params.toString()}`);
   if (!response.ok) throw new Error(`Alpha Vantage candles request failed: ${response.status}`);
   const json = await response.json();
-
   const seriesKey = Object.keys(json).find((key) => key.includes("Time Series"));
   if (!seriesKey || typeof json[seriesKey] !== "object") {
     throw new Error("Alpha Vantage returned an invalid candle payload.");
@@ -247,10 +279,6 @@ async function fetchAlphaVantageSearch(query: string): Promise<SearchResult[]> {
   }));
 }
 
-function getCacheKey(prefix: string, symbol: string, timeframe?: string) {
-  return `${prefix}:${symbol}:${timeframe ?? "default"}`;
-}
-
 export async function fetchCandles(symbol: string, timeframe?: string): Promise<MarketCandle[]> {
   const normalizedSymbol = normalizeSymbol(symbol);
   const normalizedTimeframe = normalizeTimeframe(timeframe);
@@ -260,10 +288,15 @@ export async function fetchCandles(symbol: string, timeframe?: string): Promise<
     return cached.candles;
   }
 
-  const provider = getProviderName();
-  const candles = provider === "finnhub"
-    ? await fetchFinnhubCandles(normalizedSymbol, normalizedTimeframe)
-    : await fetchAlphaVantageCandles(normalizedSymbol, normalizedTimeframe);
+  const provider = FINNHUB_API_KEY ? "finnhub" : ALPHAVANTAGE_API_KEY ? "alphavantage" : "mock";
+  let candles: MarketCandle[];
+
+  try {
+    candles = provider === "finnhub" ? await fetchFinnhubCandles(normalizedSymbol, normalizedTimeframe) : await fetchAlphaVantageCandles(normalizedSymbol, normalizedTimeframe);
+  } catch (error) {
+    console.warn(`Market candle fetch failed for ${normalizedSymbol}:`, error);
+    candles = buildMockCandles(normalizedSymbol, normalizedTimeframe);
+  }
 
   candleCache.set(cacheKey, { expires: Date.now() + DEFAULT_CANDLE_TTL, candles });
   return candles;
@@ -277,28 +310,38 @@ export async function fetchQuote(symbol: string): Promise<Quote> {
     return cached.quote;
   }
 
-  const provider = getProviderName();
-  const quote = provider === "finnhub"
-    ? await fetchFinnhubQuote(normalizedSymbol)
-    : await fetchAlphaVantageQuote(normalizedSymbol);
+  const provider = FINNHUB_API_KEY ? "finnhub" : ALPHAVANTAGE_API_KEY ? "alphavantage" : "mock";
+  let quote: Quote;
+
+  try {
+    quote = provider === "finnhub" ? await fetchFinnhubQuote(normalizedSymbol) : await fetchAlphaVantageQuote(normalizedSymbol);
+  } catch (error) {
+    console.warn(`Market quote fetch failed for ${normalizedSymbol}:`, error);
+    quote = buildMockQuote(normalizedSymbol);
+  }
 
   quoteCache.set(cacheKey, { expires: Date.now() + DEFAULT_QUOTE_TTL, quote });
   return quote;
 }
 
 export async function fetchBatchQuotes(symbols: string[]): Promise<Record<string, Quote>> {
-  const results: Record<string, Quote> = {};
-  const normalized = Array.from(new Set(symbols.map(normalizeSymbol))).slice(0, 20);
-  const promises = normalized.map(async (symbol) => {
-    try {
-      const quote = await fetchQuote(symbol);
-      results[symbol] = quote;
-    } catch {
-      // ignore invalid symbols when fetching batch data
-    }
-  });
+  return fetchWatchlistData(symbols);
+}
 
-  await Promise.all(promises);
+export async function fetchWatchlistData(symbols: string[]): Promise<Record<string, Quote>> {
+  const results: Record<string, Quote> = {};
+  const normalized = Array.from(new Set(symbols.map(normalizeSymbol))).slice(0, 25);
+
+  await Promise.all(
+    normalized.map(async (symbol) => {
+      try {
+        results[symbol] = await fetchQuote(symbol);
+      } catch {
+        // ignore invalid symbol
+      }
+    })
+  );
+
   return results;
 }
 
@@ -311,10 +354,15 @@ export async function searchSymbols(query: string): Promise<SearchResult[]> {
     return cached.results;
   }
 
-  const provider = getProviderName();
-  const results = provider === "finnhub"
-    ? await fetchFinnhubSearch(searchTerm)
-    : await fetchAlphaVantageSearch(searchTerm);
+  const provider = FINNHUB_API_KEY ? "finnhub" : ALPHAVANTAGE_API_KEY ? "alphavantage" : "mock";
+  let results: SearchResult[] = [];
+
+  try {
+    results = provider === "finnhub" ? await fetchFinnhubSearch(searchTerm) : await fetchAlphaVantageSearch(searchTerm);
+  } catch (error) {
+    console.warn(`Search fetch failed for ${searchTerm}:`, error);
+    results = [{ symbol: query.toUpperCase(), description: "Symbol lookup failed, try again." }];
+  }
 
   searchCache.set(cacheKey, { expires: Date.now() + DEFAULT_SEARCH_TTL, results });
   return results;

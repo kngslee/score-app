@@ -9,6 +9,11 @@ import {
 } from "lightweight-charts";
 import type { MarketCandle } from "@/lib/data/market";
 
+function getCurrentTextColor() {
+  if (typeof window === "undefined") return "#fff";
+  return getComputedStyle(document.documentElement).getPropertyValue("--text")?.trim() || "#fff";
+}
+
 const TIMEFRAMES = [
   { label: "1m", value: "1m" },
   { label: "5m", value: "5m" },
@@ -37,7 +42,7 @@ export default function Chart({ symbol }: Props) {
     chartRef.current = createChart(chartContainerRef.current, {
       layout: {
         background: { color: "transparent" },
-        textColor: "var(--text)" as unknown as string,
+        textColor: getCurrentTextColor(),
       },
       crosshair: {
         mode: CrosshairMode.Normal,

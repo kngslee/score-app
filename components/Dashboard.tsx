@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Chart from "./Chart";
+import GrokPanel from "./GrokPanel";
 import ScorePanel from "./ScorePanel";
 import SymbolSearch from "./SymbolSearch";
 import ThemeToggle from "./ThemeToggle";
@@ -274,14 +275,19 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="w-80 overflow-hidden border-l border-white/10 glass-panel">
-        {selectedScore ? (
-          <ScorePanel symbol={selectedSymbol} score={selectedScore} />
-        ) : (
-          <div className="h-full flex items-center justify-center p-6 text-slate-400">
-            Loading score analysis...
+      <div className="w-96 overflow-hidden border-l border-white/10 glass-panel">
+        <div className="flex h-full flex-col overflow-y-auto">
+          {selectedScore ? (
+            <ScorePanel symbol={selectedSymbol} score={selectedScore} />
+          ) : (
+            <div className="h-full flex items-center justify-center p-6 text-slate-400">
+              Loading score analysis...
+            </div>
+          )}
+          <div className="border-t border-white/10 p-4">
+            <GrokPanel symbol={selectedSymbol} quote={selectedQuote} score={selectedScore} />
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
